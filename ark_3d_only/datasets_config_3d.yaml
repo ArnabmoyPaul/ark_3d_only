@@ -1,0 +1,55 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# datasets_config_3d.yaml
+# Ark+ 3D-only run — 6 × MedMNIST 3D datasets
+#
+# task_type values (engine-canonical):
+#   'multi-class classification'  → CrossEntropyLoss  (targets: long scalar)
+#   'binary classification'       → BCEWithLogitsLoss (targets: float scalar (1,))
+#
+# diseases list length determines head output size:
+#   binary  → 1  entry  → single logit
+#   multi   → N  entries → N logits
+# ─────────────────────────────────────────────────────────────────────────────
+
+OrganMNIST3D:
+  flag: organmnist3d
+  task_type: multi-class classification
+  diseases: ['liver','kidney-right','kidney-left','femur-right','femur-left',
+             'bladder','heart','lung-right','lung-left','spleen','pancreas']
+  n_channels: 1
+  dim: 3D
+
+NoduleMNIST3D:
+  flag: nodulemnist3d
+  task_type: binary classification
+  diseases: ['nodule']          # 1 logit
+  n_channels: 1
+  dim: 3D
+
+AdrenalMNIST3D:
+  flag: adrenalmnist3d
+  task_type: binary classification
+  diseases: ['hyperplasia']     # 1 logit
+  n_channels: 1
+  dim: 3D
+
+FractureMNIST3D:
+  flag: fracturemnist3d
+  task_type: multi-class classification
+  diseases: ['buckle','nondisplaced','displaced']
+  n_channels: 1
+  dim: 3D
+
+VesselMNIST3D:
+  flag: vesselmnist3d
+  task_type: binary classification
+  diseases: ['aneurysm']        # 1 logit
+  n_channels: 1
+  dim: 3D
+
+SynapseMNIST3D:
+  flag: synapsemnist3d
+  task_type: binary classification
+  diseases: ['excitatory']      # 1 logit
+  n_channels: 1
+  dim: 3D
