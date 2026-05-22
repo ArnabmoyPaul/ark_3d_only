@@ -89,10 +89,10 @@ def _local_pixel_shuffling(vol: np.ndarray, n_windows: int = 500) -> np.ndarray:
         wh = random.randint(2, max(2, H // 5))
         ww = random.randint(2, max(2, W // 5))
 
-        # Random anchor
-        d0 = random.randint(0, D - wd)
-        h0 = random.randint(0, H - wh)
-        w0 = random.randint(0, W - ww)
+        # Random anchor — max(0,...) prevents randint(0,0) crash
+        d0 = random.randint(0, max(0, D - wd))
+        h0 = random.randint(0, max(0, H - wh))
+        w0 = random.randint(0, max(0, W - ww))
 
         patch = out[d0:d0+wd, h0:h0+wh, w0:w0+ww].flatten()
         np.random.shuffle(patch)
