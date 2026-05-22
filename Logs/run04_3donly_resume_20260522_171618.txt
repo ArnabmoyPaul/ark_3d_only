@@ -1,0 +1,13 @@
+usage: main_3d.py [-h]
+                  [--datasets {OrganMNIST3D,NoduleMNIST3D,AdrenalMNIST3D,FractureMNIST3D,VesselMNIST3D,SynapseMNIST3D} [{OrganMNIST3D,NoduleMNIST3D,AdrenalMNIST3D,FractureMNIST3D,VesselMNIST3D,SynapseMNIST3D} ...]]
+                  [--medmnist_root MEDMNIST_ROOT] [--img_size IMG_SIZE]
+                  [--model {swin_tiny,swin_small,swin_base,swin_large}]
+                  [--pretrain_epochs PRETRAIN_EPOCHS]
+                  [--batch_size BATCH_SIZE] [--lr LR]
+                  [--weight_decay WEIGHT_DECAY]
+                  [--warmup_epochs WARMUP_EPOCHS] [--workers WORKERS]
+                  [--device DEVICE] [--exp_name EXP_NAME]
+                  [--test_epoch TEST_EPOCH] [--resume]
+                  [--pretrained_weights PRETRAINED_WEIGHTS]
+                  [--projector_features PROJECTOR_FEATURES]
+main_3d.py: error: unrecognized arguments: --momentum_teacher 0.9
