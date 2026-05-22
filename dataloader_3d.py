@@ -94,9 +94,11 @@ def _local_pixel_shuffling(vol: np.ndarray, n_windows: int = 500) -> np.ndarray:
         h0 = random.randint(0, max(0, H - wh))
         w0 = random.randint(0, max(0, W - ww))
 
-        patch = out[d0:d0+wd, h0:h0+wh, w0:w0+ww].flatten()
+        region = out[d0:d0+wd, h0:h0+wh, w0:w0+ww]
+        shape  = region.shape            # actual clipped shape
+        patch  = region.flatten().copy()
         np.random.shuffle(patch)
-        out[d0:d0+wd, h0:h0+wh, w0:w0+ww] = patch.reshape(wd, wh, ww)
+        out[d0:d0+wd, h0:h0+wh, w0:w0+ww] = patch.reshape(shape)
 
     return out
 
