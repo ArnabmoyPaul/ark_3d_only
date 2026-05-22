@@ -1,0 +1,117 @@
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+[build_model_3d] swin_tiny  |  enc_dim=768  |  params=32.2M  |  heads=[11, 1, 1, 3, 1, 1]
+[build_model_3d] swin_tiny  |  enc_dim=768  |  params=32.2M  |  heads=[11, 1, 1, 3, 1, 1]
+
+Model: swin_tiny  |  32.2M params
+Datasets: ['OrganMNIST3D', 'NoduleMNIST3D', 'AdrenalMNIST3D', 'FractureMNIST3D', 'VesselMNIST3D', 'SynapseMNIST3D']
+Classes:  {'OrganMNIST3D': 11, 'NoduleMNIST3D': 1, 'AdrenalMNIST3D': 1, 'FractureMNIST3D': 3, 'VesselMNIST3D': 1, 'SynapseMNIST3D': 1}
+Epochs:   300  |  LR: 0.001  |  Batch: 64
+─────────────────────────────────────────────────────────────────
+ Epoch   ValLoss        LR  OrganMNI  NoduleMN  AdrenalM  Fracture  VesselMN  SynapseM
+─────────────────────────────────────────────────────────────────
+     1    1.0654  1.00e-06         ?         ?         ?         ?         ?         ?
+     2    1.2898  1.01e-04         ?         ?         ?         ?         ?         ?
+     3    1.1742  2.01e-04         ?         ?         ?         ?         ?         ?
+     4    1.0444  3.01e-04         ?         ?         ?         ?         ?         ?
+     5    1.0932  4.01e-04         ?         ?         ?         ?         ?         ?
+     6    0.9938  5.01e-04         ?         ?         ?         ?         ?         ?
+     7    1.0247  6.00e-04         ?         ?         ?         ?         ?         ?
+     8    1.0275  7.00e-04         ?         ?         ?         ?         ?         ?
+     9    1.0382  8.00e-04         ?         ?         ?         ?         ?         ?
+    10    1.0812  9.00e-04         ?         ?         ?         ?         ?         ?
+
+  Epoch 10 test results:
+  Dataset                 AUC/ACC    SOTA      Gap
+  ──────────────────────────────────────────────────
+  OrganMNIST3D             0.5018   0.997  -0.4952  ✗
+  NoduleMNIST3D            0.4856   0.863  -0.3774  ✗
+  AdrenalMNIST3D           0.5000   0.874  -0.3740  ✗
+  FractureMNIST3D          0.4767   0.714  -0.2373  ✗
+  VesselMNIST3D            0.5000   0.914  -0.4140  ✗
+  SynapseMNIST3D           0.4810   0.843  -0.3620  ✗
+
+  Mean AUC: 0.4909
+  ──────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+ Epoch   ValLoss        LR  OrganMNI  NoduleMN  AdrenalM  Fracture  VesselMN  SynapseM
+─────────────────────────────────────────────────────────────────
+    11    1.0090  1.00e-03         ?         ?         ?         ?         ?         ?
+    12    1.0296  1.00e-03         ?         ?         ?         ?         ?         ?
+    13    1.0644  1.00e-03         ?         ?         ?         ?         ?         ?
+    14    1.0632  1.00e-03         ?         ?         ?         ?         ?         ?
+    15    1.0532  1.00e-03         ?         ?         ?         ?         ?         ?
+    16    1.0585  9.99e-04         ?         ?         ?         ?         ?         ?
+    17    1.0479  9.99e-04         ?         ?         ?         ?         ?         ?
+    18    1.0348  9.99e-04         ?         ?         ?         ?         ?         ?
+    19    1.0295  9.98e-04         ?         ?         ?         ?         ?         ?
+    20    1.0435  9.98e-04         ?         ?         ?         ?         ?         ?
+
+  Epoch 20 test results:
+  Dataset                 AUC/ACC    SOTA      Gap
+  ──────────────────────────────────────────────────
+  OrganMNIST3D             0.4843   0.997  -0.5127  ✗
+  NoduleMNIST3D            0.5000   0.863  -0.3630  ✗
+  AdrenalMNIST3D           0.5000   0.874  -0.3740  ✗
+  FractureMNIST3D          0.4929   0.714  -0.2211  ✗
+  VesselMNIST3D            0.5000   0.914  -0.4140  ✗
+  SynapseMNIST3D           0.4957   0.843  -0.3473  ✗
+
+  Mean AUC: 0.4955
+  ──────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+ Epoch   ValLoss        LR  OrganMNI  NoduleMN  AdrenalM  Fracture  VesselMN  SynapseM
+─────────────────────────────────────────────────────────────────
+    21    1.0467  9.97e-04         ?         ?         ?         ?         ?         ?
+    22    1.0532  9.96e-04         ?         ?         ?         ?         ?         ?
+    23    1.0498  9.96e-04         ?         ?         ?         ?         ?         ?
+    24    1.0464  9.95e-04         ?         ?         ?         ?         ?         ?
+    25    1.0440  9.94e-04         ?         ?         ?         ?         ?         ?
+    26    1.0495  9.93e-04         ?         ?         ?         ?         ?         ?
+    27    1.0545  9.93e-04         ?         ?         ?         ?         ?         ?
+    28    1.0578  9.92e-04         ?         ?         ?         ?         ?         ?
+    29    1.0373  9.91e-04         ?         ?         ?         ?         ?         ?
+    30    1.0441  9.89e-04         ?         ?         ?         ?         ?         ?
+
+  Epoch 30 test results:
+  Dataset                 AUC/ACC    SOTA      Gap
+  ──────────────────────────────────────────────────
+  OrganMNIST3D             0.4733   0.997  -0.5237  ✗
+  NoduleMNIST3D            0.5225   0.863  -0.3405  ✗
+  AdrenalMNIST3D           0.5000   0.874  -0.3740  ✗
+  FractureMNIST3D          0.5030   0.714  -0.2110  ✗
+  VesselMNIST3D            0.5000   0.914  -0.4140  ✗
+  SynapseMNIST3D           0.5000   0.843  -0.3430  ✗
+
+  Mean AUC: 0.4998
+  ──────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────
+ Epoch   ValLoss        LR  OrganMNI  NoduleMN  AdrenalM  Fracture  VesselMN  SynapseM
+─────────────────────────────────────────────────────────────────
+    31    1.0503  9.88e-04         ?         ?         ?         ?         ?         ?
+    32    1.0536  9.87e-04         ?         ?         ?         ?         ?         ?
+    33    1.0498  9.86e-04         ?         ?         ?         ?         ?         ?
+    34    1.0408  9.85e-04         ?         ?         ?         ?         ?         ?
+    35    1.0457  9.83e-04         ?         ?         ?         ?         ?         ?
+    36    1.0377  9.82e-04         ?         ?         ?         ?         ?         ?
+    37    1.0507  9.80e-04         ?         ?         ?         ?         ?         ?
+    38    1.0441  9.79e-04         ?         ?         ?         ?         ?         ?
