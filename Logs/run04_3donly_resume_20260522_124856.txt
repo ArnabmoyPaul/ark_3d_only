@@ -1,0 +1,68 @@
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+
+============================================================
+ Ark+ 3D-only Cyclic Pretraining
+============================================================
+ Model      : swin_tiny
+ Datasets   : ['OrganMNIST3D', 'NoduleMNIST3D', 'AdrenalMNIST3D', 'FractureMNIST3D', 'VesselMNIST3D', 'SynapseMNIST3D']
+ Epochs     : 200
+ Batch size : 64
+ LR         : 0.001
+ Momentum   : 0.9
+ Device     : cuda
+ Exp name   : run04_3donly
+============================================================
+
+Dataset              Task                            #Train   SOTA
+--------------------------------------------------------------------
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+OrganMNIST3D         multi-class classification         971  0.997
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+NoduleMNIST3D        binary classification             1158  0.863
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+AdrenalMNIST3D       binary classification             1188  0.874
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+FractureMNIST3D      multi-class classification        1027  0.714
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+VesselMNIST3D        binary classification             1335  0.914
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+SynapseMNIST3D       binary classification             1230  0.843
+
+DataLoader workers: 4
+  [WeightedSampler] OrganMNIST3D  (train=971)
+  [WeightedSampler] NoduleMNIST3D  (train=1158)
+  [WeightedSampler] AdrenalMNIST3D  (train=1188)
+  [WeightedSampler] FractureMNIST3D  (train=1027)
+  [WeightedSampler] VesselMNIST3D  (train=1335)
+  [WeightedSampler] SynapseMNIST3D  (train=1230)
+num_classes_list: {'OrganMNIST3D': 11, 'NoduleMNIST3D': 1, 'AdrenalMNIST3D': 1, 'FractureMNIST3D': 3, 'VesselMNIST3D': 1, 'SynapseMNIST3D': 1}
+[build_model_3d] swin_tiny  |  enc_dim=768  |  params=32.2M  |  heads=[11, 1, 1, 3, 1, 1]
+[build_model_3d] swin_tiny  |  enc_dim=768  |  params=32.2M  |  heads=[11, 1, 1, 3, 1, 1]
+=> Loading checkpoint: ./Models\swin_tiny_run04_3donly\Ark3D_6ds_16eabd38\run04_3donly\Ark3D_6ds_16eabd38.pth.tar
+D:\ark_3d_only\engine_3d.py:156: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  ckpt = torch.load(ckpt_path, map_location='cpu')
+=> Resumed from epoch 8
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
+Epoch [9] OrganMNIST3D[ 0/16]	Time 16.476 (16.476)	OrganMNIST3D_task 2.4551e+00 (2.4551e+00)	OrganMNIST3D_consist 1.1682e+01 (1.1682e+01)
+c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\timm\models\helpers.py:7: FutureWarning: Importing from timm.models.helpers is deprecated, please import via timm.models
+  warnings.warn(f"Importing from {__name__} is deprecated, please import via timm.models", FutureWarning)
