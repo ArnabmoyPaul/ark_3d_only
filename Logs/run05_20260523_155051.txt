@@ -1,0 +1,72 @@
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+[build_model_3d] 3D-ResNet-Deep  |  enc_dim=512  |  params=33.8M  |  heads=[11, 1, 1, 3, 1, 1]
+
+Model: swin_tiny  |  33.8M params
+Datasets: ['OrganMNIST3D', 'NoduleMNIST3D', 'AdrenalMNIST3D', 'FractureMNIST3D', 'VesselMNIST3D', 'SynapseMNIST3D']
+Classes:  {'OrganMNIST3D': 11, 'NoduleMNIST3D': 1, 'AdrenalMNIST3D': 1, 'FractureMNIST3D': 3, 'VesselMNIST3D': 1, 'SynapseMNIST3D': 1}
+Epochs:   300  |  LR: 0.001  |  Batch: 64
+─────────────────────────────────────────────────────────────────
+ Epoch   TrainLoss   ValLoss        LR
+─────────────────────────────────────────────────────────────────
+     1      1.0533    1.0704  1.00e-06
+     2      1.0470    1.0532  1.01e-04
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\multiprocessing\spawn.py", line 116, in spawn_main
+    exitcode = _main(fd, parent_sentinel)
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\multiprocessing\spawn.py", line 125, in _main
+    prepare(preparation_data)
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\multiprocessing\spawn.py", line 236, in prepare
+    _fixup_main_from_path(data['init_main_from_path'])
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\multiprocessing\spawn.py", line 287, in _fixup_main_from_path
+    main_content = runpy.run_path(main_path,
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\runpy.py", line 289, in run_path
+    return _run_module_code(code, init_globals, run_name,
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\runpy.py", line 96, in _run_module_code
+    _run_code(code, mod_globals, init_globals,
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "D:\ark_3d_only\main_3d.py", line 19, in <module>
+    from utils import get_config
+  File "D:\ark_3d_only\utils.py", line 1, in <module>
+    from sklearn.metrics import roc_auc_score
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\__init__.py", line 73, in <module>
+    from .base import clone  # noqa: E402
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\base.py", line 19, in <module>
+    from .utils._metadata_requests import _MetadataRequester, _routing_enabled
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\__init__.py", line 9, in <module>
+    from ._chunking import gen_batches, gen_even_slices
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\_chunking.py", line 11, in <module>
+    from ._param_validation import Interval, validate_params
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\_param_validation.py", line 17, in <module>
+    from .validation import _is_arraylike_not_scalar
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\validation.py", line 21, in <module>
+    from ..utils._array_api import _asarray_with_order, _is_numpy_namespace, get_namespace
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\_array_api.py", line 20, in <module>
+    from .fixes import parse_version
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\sklearn\utils\fixes.py", line 16, in <module>
+    import scipy.stats
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\scipy\stats\__init__.py", line 624, in <module>
+    from ._stats_py import *
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\scipy\stats\_stats_py.py", line 39, in <module>
+    from scipy.spatial import distance_matrix
+  File "c:\Users\User\anaconda3\envs\ark+MedMNIST\lib\site-packages\scipy\spatial\__init__.py", line 112, in <module>
+    from ._qhull import *
+ImportError: DLL load failed while importing _qhull: The paging file is too small for this operation to complete.

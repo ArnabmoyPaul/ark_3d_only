@@ -28,7 +28,7 @@ from utils import remap_pretrained_keys_swin   # kept for API compat
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ResBlock3D(nn.Module):
-    """3D residual block with dropout after each activation."""
+    """3D residual block with mild dropout after second conv."""
 
     def __init__(self, in_ch: int, out_ch: int, stride: int = 1,
                  dropout: float = 0.0):
@@ -36,13 +36,14 @@ class ResBlock3D(nn.Module):
         self.conv1 = nn.Conv3d(in_ch, out_ch, 3, stride=stride,
                                padding=1, bias=False)
         self.bn1   = nn.BatchNorm3d(out_ch)
-        self.drop1 = nn.Dropout3d(p=dropout)
 
         self.conv2 = nn.Conv3d(out_ch, out_ch, 3, stride=1,
                                padding=1, bias=False)
         self.bn2   = nn.BatchNorm3d(out_ch)
-        self.drop2 = nn.Dropout3d(p=dropout)
 
+        # Regular Dropout (not Dropout3d) — drops individual voxels not channels
+        # Dropout3d drops entire feature maps which is too aggressive on 28^3 vols
+        self.drop  = nn.Dropout(p=dropout)
         self.relu  = nn.ReLU(inplace=True)
 
         self.shortcut = nn.Sequential()
@@ -53,8 +54,8 @@ class ResBlock3D(nn.Module):
             )
 
     def forward(self, x):
-        out = self.drop1(self.relu(self.bn1(self.conv1(x))))
-        out = self.drop2(self.bn2(self.conv2(out)))
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.drop(self.bn2(self.conv2(out)))   # dropout after second BN
         out = out + self.shortcut(x)
         return self.relu(out)
 
@@ -65,43 +66,37 @@ class ResBlock3D(nn.Module):
 
 class Encoder3D(nn.Module):
     """
-    3D ResNet encoder with dropout regularisation.
-    Input : (B, 1, D, H, W)
-    Output: (B, enc_dim)
-
-    Dropout schedule: 0.2 in early layers → 0.4 in deep layers.
-    Prevents memorisation on small datasets (~1000 samples).
+    3D ResNet encoder — enc_dim=384, mild dropout.
+    Dropout3d was too aggressive (kills entire feature maps on 28^3 volumes).
+    Regular Dropout at p=0.15-0.25 gives regularisation without strangling gradients.
     """
 
-    def __init__(self, enc_dim: int = 256, dropout: float = 0.4):
+    def __init__(self, enc_dim: int = 384, dropout: float = 0.2):
         super().__init__()
         self.enc_dim = enc_dim
 
-        # Stem — no dropout here, first feature extraction
         self.stem = nn.Sequential(
             nn.Conv3d(1, 32, kernel_size=3, stride=2, padding=1, bias=False),
             nn.BatchNorm3d(32),
             nn.ReLU(inplace=True),
         )
 
-        # Residual stages — dropout increases with depth
         self.layer1 = nn.Sequential(
-            ResBlock3D(32,  64,  stride=2, dropout=dropout * 0.5),  # 0.20
+            ResBlock3D(32,  64,  stride=2, dropout=dropout * 0.5),   # p=0.10
             ResBlock3D(64,  64,  stride=1, dropout=dropout * 0.5),
         )
         self.layer2 = nn.Sequential(
-            ResBlock3D(64,  128, stride=2, dropout=dropout * 0.75), # 0.30
+            ResBlock3D(64,  128, stride=2, dropout=dropout * 0.75),  # p=0.15
             ResBlock3D(128, 128, stride=1, dropout=dropout * 0.75),
         )
         self.layer3 = nn.Sequential(
-            ResBlock3D(128, enc_dim, stride=2, dropout=dropout),    # 0.40
+            ResBlock3D(128, enc_dim, stride=2, dropout=dropout),     # p=0.20
             ResBlock3D(enc_dim, enc_dim, stride=1, dropout=dropout),
         )
 
-        self.pool    = nn.AdaptiveAvgPool3d(1)
-        self.feature_drop = nn.Dropout(p=0.5)   # final feature dropout
+        self.pool         = nn.AdaptiveAvgPool3d(1)
+        self.feature_drop = nn.Dropout(p=0.3)   # final feature dropout
 
-        # Kaiming init
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out',
@@ -115,8 +110,8 @@ class Encoder3D(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.pool(x).flatten(1)       # (B, enc_dim)
-        x = self.feature_drop(x)          # p=0.5 dropout on features
+        x = self.pool(x).flatten(1)
+        x = self.feature_drop(x)
         return x
 
 
@@ -187,18 +182,18 @@ class ArkModel3D(nn.Module):
 
 def build_model_3d(args, num_classes_list: list) -> ArkModel3D:
     """
-    enc_dim=256, dropout=0.4 → ~4M params
-    Designed for ~1000 training samples per dataset.
+    enc_dim=384, regular Dropout(0.2) in ResBlocks, Dropout(0.3) on features.
+    ~11M params — enough capacity to learn, enough dropout to not memorise.
     """
     pf      = getattr(args, 'projector_features', None)
-    dropout = getattr(args, 'dropout', 0.4)
+    dropout = getattr(args, 'dropout', 0.2)
     model   = ArkModel3D(num_classes_list,
-                         enc_dim=256,
+                         enc_dim=384,
                          dropout=dropout,
                          projector_features=pf)
 
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
-    print(f"[build_model_3d] 3D-ResNet+Dropout  |  enc_dim=256  |  "
+    print(f"[build_model_3d] 3D-ResNet+Dropout  |  enc_dim=384  |  "
           f"dropout={dropout}  |  params={n_params:.1f}M  |  "
           f"heads={num_classes_list}")
     return model
