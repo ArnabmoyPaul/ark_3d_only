@@ -43,7 +43,7 @@ def get_args():
     p.add_argument('--pretrain_epochs', type=int,   default=300)
     p.add_argument('--batch_size',      type=int,   default=128)
     p.add_argument('--lr',              type=float, default=1e-3)
-    p.add_argument('--weight_decay',    type=float, default=0.05)
+    p.add_argument('--weight_decay',    type=float, default=0.1)     # was 0.05
     p.add_argument('--warmup_epochs',   type=int,   default=10)
     p.add_argument('--workers',         type=int,   default=8)
     p.add_argument('--device',          default='cuda')

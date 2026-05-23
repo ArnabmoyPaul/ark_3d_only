@@ -1,35 +1,26 @@
 """
-models_3d.py  —  3D-native encoder for MedMNIST 3D
-Replaces the broken Swin depth-fold approach.
+models_3d.py  —  run09
+3D ResNet encoder with aggressive dropout regularisation.
 
-Why the previous approach failed:
-  - Swin-Tiny with depth-fold processed each 28×28 slice independently
-  - 28px slices have ~3-5 informative voxels per organ — nearly empty
-  - Mean-pooling 28 near-empty feature vectors → pure noise
-  - Result: AUC stuck at 0.50 for all 36 epochs
+Why run08 failed on 5/6 datasets:
+  - 33.8M params, ~1000 training samples per dataset
+  - Model memorised training set (train loss 1.05→0.63)
+  - Val loss flat at 1.0–1.2 for all 300 epochs = no generalisation
+  - OrganMNIST3D (971 samples, 11 classes) still learned → architecture works
+  - The other 5 binary/3-class tasks need stronger regularisation
 
-This file uses a proper 3D CNN encoder (3D ResNet-style) that processes
-the full (1, D, H, W) volume end-to-end, preserving volumetric context.
-
-Architecture:
-  Input  (B, 1, 28, 28, 28)
-  Conv3d stem  → (B, 32, 14, 14, 14)
-  ResBlock3D×2 → (B, 64,  7,  7,  7)
-  ResBlock3D×2 → (B, 128, 4,  4,  4)
-  ResBlock3D×2 → (B, 256, 2,  2,  2)
-  GlobalAvgPool → (B, 256)
-  Projector MLP → (B, 256)
-  TaskHead_i    → (B, n_classes_i)
-
-256-dim features, ~4M params — much smaller than 32M Swin-Tiny but
-actually learns from 3D volumes.
+Fixes:
+  1. enc_dim 512→256  (~4M params, 8× fewer than run08)
+  2. Dropout(p=0.4) after every ResBlock activation
+  3. Dropout(p=0.5) on the final feature vector before heads
+  4. weight_decay 0.1 in main_3d.py (was 0.05)
+  5. aug probability 0.5 in dataloader_3d.py (was 0.3)
 """
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 
-from utils import remap_pretrained_keys_swin  # kept for API compat
+from utils import remap_pretrained_keys_swin   # kept for API compat
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -37,17 +28,23 @@ from utils import remap_pretrained_keys_swin  # kept for API compat
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ResBlock3D(nn.Module):
-    """Basic 3D residual block with two 3×3×3 convolutions."""
+    """3D residual block with dropout after each activation."""
 
-    def __init__(self, in_ch: int, out_ch: int, stride: int = 1):
+    def __init__(self, in_ch: int, out_ch: int, stride: int = 1,
+                 dropout: float = 0.0):
         super().__init__()
-        self.conv1 = nn.Conv3d(in_ch, out_ch, 3, stride=stride, padding=1, bias=False)
+        self.conv1 = nn.Conv3d(in_ch, out_ch, 3, stride=stride,
+                               padding=1, bias=False)
         self.bn1   = nn.BatchNorm3d(out_ch)
-        self.conv2 = nn.Conv3d(out_ch, out_ch, 3, stride=1, padding=1, bias=False)
+        self.drop1 = nn.Dropout3d(p=dropout)
+
+        self.conv2 = nn.Conv3d(out_ch, out_ch, 3, stride=1,
+                               padding=1, bias=False)
         self.bn2   = nn.BatchNorm3d(out_ch)
+        self.drop2 = nn.Dropout3d(p=dropout)
+
         self.relu  = nn.ReLU(inplace=True)
 
-        # Shortcut: match dimensions when stride > 1 or channels change
         self.shortcut = nn.Sequential()
         if stride != 1 or in_ch != out_ch:
             self.shortcut = nn.Sequential(
@@ -56,49 +53,59 @@ class ResBlock3D(nn.Module):
             )
 
     def forward(self, x):
-        out = self.relu(self.bn1(self.conv1(x)))
-        out = self.bn2(self.conv2(out))
+        out = self.drop1(self.relu(self.bn1(self.conv1(x))))
+        out = self.drop2(self.bn2(self.conv2(out)))
         out = out + self.shortcut(x)
         return self.relu(out)
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Encoder
+# ─────────────────────────────────────────────────────────────────────────────
+
 class Encoder3D(nn.Module):
     """
-    Deeper 3D ResNet encoder — ~15M params, GPU-saturating.
+    3D ResNet encoder with dropout regularisation.
     Input : (B, 1, D, H, W)
     Output: (B, enc_dim)
+
+    Dropout schedule: 0.2 in early layers → 0.4 in deep layers.
+    Prevents memorisation on small datasets (~1000 samples).
     """
 
-    def __init__(self, enc_dim: int = 512):
+    def __init__(self, enc_dim: int = 256, dropout: float = 0.4):
         super().__init__()
         self.enc_dim = enc_dim
 
-        # Stem
+        # Stem — no dropout here, first feature extraction
         self.stem = nn.Sequential(
-            nn.Conv3d(1, 64, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm3d(64),
+            nn.Conv3d(1, 32, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm3d(32),
             nn.ReLU(inplace=True),
         )
 
-        # Four residual stages — deeper than before
+        # Residual stages — dropout increases with depth
         self.layer1 = nn.Sequential(
-            ResBlock3D(64,  128, stride=2),
-            ResBlock3D(128, 128, stride=1),
+            ResBlock3D(32,  64,  stride=2, dropout=dropout * 0.5),  # 0.20
+            ResBlock3D(64,  64,  stride=1, dropout=dropout * 0.5),
         )
         self.layer2 = nn.Sequential(
-            ResBlock3D(128, 256, stride=2),
-            ResBlock3D(256, 256, stride=1),
+            ResBlock3D(64,  128, stride=2, dropout=dropout * 0.75), # 0.30
+            ResBlock3D(128, 128, stride=1, dropout=dropout * 0.75),
         )
         self.layer3 = nn.Sequential(
-            ResBlock3D(256, enc_dim, stride=2),
-            ResBlock3D(enc_dim, enc_dim, stride=1),
+            ResBlock3D(128, enc_dim, stride=2, dropout=dropout),    # 0.40
+            ResBlock3D(enc_dim, enc_dim, stride=1, dropout=dropout),
         )
 
-        self.pool = nn.AdaptiveAvgPool3d(1)
+        self.pool    = nn.AdaptiveAvgPool3d(1)
+        self.feature_drop = nn.Dropout(p=0.5)   # final feature dropout
 
+        # Kaiming init
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
-                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                nn.init.kaiming_normal_(m.weight, mode='fan_out',
+                                        nonlinearity='relu')
             elif isinstance(m, nn.BatchNorm3d):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
@@ -108,8 +115,9 @@ class Encoder3D(nn.Module):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
-        x = self.pool(x)
-        return x.flatten(1)
+        x = self.pool(x).flatten(1)       # (B, enc_dim)
+        x = self.feature_drop(x)          # p=0.5 dropout on features
+        return x
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -139,18 +147,18 @@ class ArkProjector(nn.Module):
 class ArkModel3D(nn.Module):
     """
     3D encoder + projector + per-dataset classification heads.
-
-    Calling convention (matches trainer_3d.py):
-        proj_feat, logit = model(x, head_n)
+    Calling convention: proj_feat, logit = model(x, head_n)
     """
 
-    def __init__(self, num_classes_list: list, enc_dim: int = 256,
+    def __init__(self, num_classes_list: list,
+                 enc_dim: int = 256,
+                 dropout: float = 0.4,
                  projector_features: int = None):
         super().__init__()
 
-        self.encoder   = Encoder3D(enc_dim=enc_dim)
-        proj_dim       = projector_features or enc_dim
-        self.projector = ArkProjector(enc_dim, enc_dim * 2, proj_dim)
+        self.encoder    = Encoder3D(enc_dim=enc_dim, dropout=dropout)
+        proj_dim        = projector_features or enc_dim
+        self.projector  = ArkProjector(enc_dim, enc_dim * 2, proj_dim)
 
         self.omni_heads = nn.ModuleList([
             nn.Linear(enc_dim, nc) for nc in num_classes_list
@@ -179,16 +187,20 @@ class ArkModel3D(nn.Module):
 
 def build_model_3d(args, num_classes_list: list) -> ArkModel3D:
     """
-    Build student or teacher model.
-    enc_dim=512, 2 ResBlocks per stage → ~15M params.
-    Properly saturates RTX 4060 VRAM with batch_size=128.
+    enc_dim=256, dropout=0.4 → ~4M params
+    Designed for ~1000 training samples per dataset.
     """
-    pf    = getattr(args, 'projector_features', None)
-    model = ArkModel3D(num_classes_list, enc_dim=512, projector_features=pf)
+    pf      = getattr(args, 'projector_features', None)
+    dropout = getattr(args, 'dropout', 0.4)
+    model   = ArkModel3D(num_classes_list,
+                         enc_dim=256,
+                         dropout=dropout,
+                         projector_features=pf)
 
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
-    print(f"[build_model_3d] 3D-ResNet-Deep  |  enc_dim=512  |  "
-          f"params={n_params:.1f}M  |  heads={num_classes_list}")
+    print(f"[build_model_3d] 3D-ResNet+Dropout  |  enc_dim=256  |  "
+          f"dropout={dropout}  |  params={n_params:.1f}M  |  "
+          f"heads={num_classes_list}")
     return model
 
 
