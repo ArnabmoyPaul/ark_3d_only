@@ -122,7 +122,13 @@ def engine_3d(args,
         with open(results_csv, 'w') as f:
             f.write('epoch,' + ','.join(dataset_list) + ',avg_val_loss\n')
 
-    max_w = min(getattr(args, 'workers', 4), multiprocessing.cpu_count(), 4)
+    # Windows multiprocessing spawns new Python processes which re-import
+    # scipy/sklearn — this can exhaust the pagefile and crash with
+    # "DLL load failed: paging file too small".
+    # Safe fix: use 0 workers (main-process loading) on Windows.
+    import platform
+    max_w = 0 if platform.system() == 'Windows' else min(
+        getattr(args, 'workers', 4), multiprocessing.cpu_count(), 4)
 
     loaders_train, loaders_val, loaders_test = [], [], []
     for tr, vl, te in zip(dataset_train_list, dataset_val_list, dataset_test_list):
