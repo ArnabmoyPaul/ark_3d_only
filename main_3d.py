@@ -41,11 +41,11 @@ def get_args():
     p.add_argument('--model',           dest='model_name', default='swin_tiny',
                    choices=['swin_tiny','swin_small','swin_base','swin_large'])
     p.add_argument('--pretrain_epochs', type=int,   default=300)
-    p.add_argument('--batch_size',      type=int,   default=64)
+    p.add_argument('--batch_size',      type=int,   default=128)
     p.add_argument('--lr',              type=float, default=1e-3)
     p.add_argument('--weight_decay',    type=float, default=0.05)
     p.add_argument('--warmup_epochs',   type=int,   default=10)
-    p.add_argument('--workers',         type=int,   default=4)
+    p.add_argument('--workers',         type=int,   default=8)
     p.add_argument('--device',          default='cuda')
     p.add_argument('--exp_name',        default='run05')
     p.add_argument('--test_epoch',      type=int,   default=10)

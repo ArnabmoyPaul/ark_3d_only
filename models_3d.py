@@ -64,30 +64,38 @@ class ResBlock3D(nn.Module):
 
 class Encoder3D(nn.Module):
     """
-    3D ResNet-style encoder.
-    Input : (B, 1, D, H, W)  — single-channel 3D volume
-    Output: (B, enc_dim)     — global feature vector
+    Deeper 3D ResNet encoder — ~15M params, GPU-saturating.
+    Input : (B, 1, D, H, W)
+    Output: (B, enc_dim)
     """
 
-    def __init__(self, enc_dim: int = 256):
+    def __init__(self, enc_dim: int = 512):
         super().__init__()
         self.enc_dim = enc_dim
 
-        # Stem: 1 → 32 channels, halve spatial
+        # Stem
         self.stem = nn.Sequential(
-            nn.Conv3d(1, 32, kernel_size=3, stride=2, padding=1, bias=False),
-            nn.BatchNorm3d(32),
+            nn.Conv3d(1, 64, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm3d(64),
             nn.ReLU(inplace=True),
         )
 
-        # Four residual stages
-        self.layer1 = nn.Sequential(ResBlock3D(32,  64,  stride=2))   # /4
-        self.layer2 = nn.Sequential(ResBlock3D(64,  128, stride=2))   # /8
-        self.layer3 = nn.Sequential(ResBlock3D(128, enc_dim, stride=2))  # /16
+        # Four residual stages — deeper than before
+        self.layer1 = nn.Sequential(
+            ResBlock3D(64,  128, stride=2),
+            ResBlock3D(128, 128, stride=1),
+        )
+        self.layer2 = nn.Sequential(
+            ResBlock3D(128, 256, stride=2),
+            ResBlock3D(256, 256, stride=1),
+        )
+        self.layer3 = nn.Sequential(
+            ResBlock3D(256, enc_dim, stride=2),
+            ResBlock3D(enc_dim, enc_dim, stride=1),
+        )
 
         self.pool = nn.AdaptiveAvgPool3d(1)
 
-        # Weight init
         for m in self.modules():
             if isinstance(m, nn.Conv3d):
                 nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
@@ -101,7 +109,7 @@ class Encoder3D(nn.Module):
         x = self.layer2(x)
         x = self.layer3(x)
         x = self.pool(x)
-        return x.flatten(1)   # (B, enc_dim)
+        return x.flatten(1)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -172,14 +180,14 @@ class ArkModel3D(nn.Module):
 def build_model_3d(args, num_classes_list: list) -> ArkModel3D:
     """
     Build student or teacher model.
-    args.model_name is ignored — always uses 3D ResNet encoder.
-    enc_dim=256 gives ~4M params, fast on RTX 4060.
+    enc_dim=512, 2 ResBlocks per stage → ~15M params.
+    Properly saturates RTX 4060 VRAM with batch_size=128.
     """
-    pf  = getattr(args, 'projector_features', None)
-    model = ArkModel3D(num_classes_list, enc_dim=256, projector_features=pf)
+    pf    = getattr(args, 'projector_features', None)
+    model = ArkModel3D(num_classes_list, enc_dim=512, projector_features=pf)
 
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
-    print(f"[build_model_3d] 3D-ResNet  |  enc_dim=256  |  "
+    print(f"[build_model_3d] 3D-ResNet-Deep  |  enc_dim=512  |  "
           f"params={n_params:.1f}M  |  heads={num_classes_list}")
     return model
 
