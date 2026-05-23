@@ -178,7 +178,7 @@ def engine_3d(args,
             model, loaders_train, criterions, optimizer, device)
 
         # ── Validation loss ───────────────────────────────────────────────
-        val_losses = [evaluate(model, i, loaders_val[i], device, criterions[i], ds)
+        val_losses = [evaluate(model, i, loaders_val[i], device, criterions[i])
                       for i, ds in enumerate(dataset_list)]
         avg_val = float(np.mean(val_losses))
 

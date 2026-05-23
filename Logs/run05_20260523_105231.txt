@@ -1,0 +1,37 @@
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\organmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\nodulemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\adrenalmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\fracturemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\vesselmnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+Using downloaded and verified file: C:\Users\User\.medmnist\synapsemnist3d.npz
+[build_model_3d] 3D-ResNet  |  enc_dim=256  |  params=3.8M  |  heads=[11, 1, 1, 3, 1, 1]
+
+Model: swin_tiny  |  3.8M params
+Datasets: ['OrganMNIST3D', 'NoduleMNIST3D', 'AdrenalMNIST3D', 'FractureMNIST3D', 'VesselMNIST3D', 'SynapseMNIST3D']
+Classes:  {'OrganMNIST3D': 11, 'NoduleMNIST3D': 1, 'AdrenalMNIST3D': 1, 'FractureMNIST3D': 3, 'VesselMNIST3D': 1, 'SynapseMNIST3D': 1}
+Epochs:   300  |  LR: 0.001  |  Batch: 64
+─────────────────────────────────────────────────────────────────
+ Epoch   TrainLoss   ValLoss        LR
+─────────────────────────────────────────────────────────────────
+Traceback (most recent call last):
+  File "D:\ark_3d_only\main_3d.py", line 88, in <module>
+    main()
+  File "D:\ark_3d_only\main_3d.py", line 79, in main
+    engine_3d(
+  File "D:\ark_3d_only\engine_3d.py", line 181, in engine_3d
+    val_losses = [evaluate(model, i, loaders_val[i], device, criterions[i], ds)
+  File "D:\ark_3d_only\engine_3d.py", line 181, in <listcomp>
+    val_losses = [evaluate(model, i, loaders_val[i], device, criterions[i], ds)
+TypeError: evaluate() takes 5 positional arguments but 6 were given
