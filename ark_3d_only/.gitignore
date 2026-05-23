@@ -1,9 +1,0 @@
-Models/
-Outputs/
-__pycache__/
-*.pyc
-*.pth.tar
-.ipynb_checkpoints/
-*.jpeg
-.DS_Store
-~medmnist/

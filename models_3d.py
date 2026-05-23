@@ -1,45 +1,111 @@
 """
-models_3d.py
-────────────
-Ark+ backbone for 3D-only MedMNIST pretraining.
+models_3d.py  —  3D-native encoder for MedMNIST 3D
+Replaces the broken Swin depth-fold approach.
 
-Architecture
-────────────
-Single ArkSwinTransformer3D handles (B, 1, D, H, W) inputs by folding
-the depth dimension into the batch before the 2D Swin encoder:
+Why the previous approach failed:
+  - Swin-Tiny with depth-fold processed each 28×28 slice independently
+  - 28px slices have ~3-5 informative voxels per organ — nearly empty
+  - Mean-pooling 28 near-empty feature vectors → pure noise
+  - Result: AUC stuck at 0.50 for all 36 epochs
 
-    (B, 1, D, H, W)
-        ↓  rearrange → (B*D, 1, H, W)
-        ↓  replicate → (B*D, 3, H, W)
-    2D SwinTransformer.forward_features()
-        ↓  pool → (B*D, F)
-        ↓  reshape + mean → (B, F)          ← depth-averaged feature
-    ArkProjector MLP  → (B, proj_dim)       ← consistency loss target
-    TaskHead_i Linear → (B, n_classes_i)    ← classification logit
+This file uses a proper 3D CNN encoder (3D ResNet-style) that processes
+the full (1, D, H, W) volume end-to-end, preserving volumetric context.
 
-Binary datasets  → n_classes = 1  (single logit, BCEWithLogitsLoss)
-Multi-class      → n_classes = N  (N logits,     CrossEntropyLoss)
+Architecture:
+  Input  (B, 1, 28, 28, 28)
+  Conv3d stem  → (B, 32, 14, 14, 14)
+  ResBlock3D×2 → (B, 64,  7,  7,  7)
+  ResBlock3D×2 → (B, 128, 4,  4,  4)
+  ResBlock3D×2 → (B, 256, 2,  2,  2)
+  GlobalAvgPool → (B, 256)
+  Projector MLP → (B, 256)
+  TaskHead_i    → (B, n_classes_i)
 
-Supported --model:
-    swin_tiny   96-dim,  28M params  ← recommended for RTX 4060 + 28³ volumes
-    swin_small  96-dim,  50M params
-    swin_base   128-dim, 88M params
-    swin_large  192-dim, 197M params
+256-dim features, ~4M params — much smaller than 32M Swin-Tiny but
+actually learns from 3D volumes.
 """
 
 import torch
 import torch.nn as nn
-from torch.hub import load_state_dict_from_url
-from einops import rearrange
+import torch.nn.functional as F
 
-import timm.models.swin_transformer as swin
-from timm.models.helpers import load_state_dict
-
-from utils import remap_pretrained_keys_swin
+from utils import remap_pretrained_keys_swin  # kept for API compat
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Projection head  (3-layer MLP with BN — matches Ark+ Nature paper)
+# Building blocks
+# ─────────────────────────────────────────────────────────────────────────────
+
+class ResBlock3D(nn.Module):
+    """Basic 3D residual block with two 3×3×3 convolutions."""
+
+    def __init__(self, in_ch: int, out_ch: int, stride: int = 1):
+        super().__init__()
+        self.conv1 = nn.Conv3d(in_ch, out_ch, 3, stride=stride, padding=1, bias=False)
+        self.bn1   = nn.BatchNorm3d(out_ch)
+        self.conv2 = nn.Conv3d(out_ch, out_ch, 3, stride=1, padding=1, bias=False)
+        self.bn2   = nn.BatchNorm3d(out_ch)
+        self.relu  = nn.ReLU(inplace=True)
+
+        # Shortcut: match dimensions when stride > 1 or channels change
+        self.shortcut = nn.Sequential()
+        if stride != 1 or in_ch != out_ch:
+            self.shortcut = nn.Sequential(
+                nn.Conv3d(in_ch, out_ch, 1, stride=stride, bias=False),
+                nn.BatchNorm3d(out_ch),
+            )
+
+    def forward(self, x):
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        out = out + self.shortcut(x)
+        return self.relu(out)
+
+
+class Encoder3D(nn.Module):
+    """
+    3D ResNet-style encoder.
+    Input : (B, 1, D, H, W)  — single-channel 3D volume
+    Output: (B, enc_dim)     — global feature vector
+    """
+
+    def __init__(self, enc_dim: int = 256):
+        super().__init__()
+        self.enc_dim = enc_dim
+
+        # Stem: 1 → 32 channels, halve spatial
+        self.stem = nn.Sequential(
+            nn.Conv3d(1, 32, kernel_size=3, stride=2, padding=1, bias=False),
+            nn.BatchNorm3d(32),
+            nn.ReLU(inplace=True),
+        )
+
+        # Four residual stages
+        self.layer1 = nn.Sequential(ResBlock3D(32,  64,  stride=2))   # /4
+        self.layer2 = nn.Sequential(ResBlock3D(64,  128, stride=2))   # /8
+        self.layer3 = nn.Sequential(ResBlock3D(128, enc_dim, stride=2))  # /16
+
+        self.pool = nn.AdaptiveAvgPool3d(1)
+
+        # Weight init
+        for m in self.modules():
+            if isinstance(m, nn.Conv3d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm3d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.stem(x)
+        x = self.layer1(x)
+        x = self.layer2(x)
+        x = self.layer3(x)
+        x = self.pool(x)
+        return x.flatten(1)   # (B, enc_dim)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Projection head
 # ─────────────────────────────────────────────────────────────────────────────
 
 class ArkProjector(nn.Module):
@@ -51,189 +117,70 @@ class ArkProjector(nn.Module):
             nn.Linear(in_dim, h),
             nn.BatchNorm1d(h),
             nn.ReLU(inplace=True),
-            nn.Linear(h, h),
-            nn.BatchNorm1d(h),
-            nn.ReLU(inplace=True),
             nn.Linear(h, o),
         )
 
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
+    def forward(self, x):
         return self.net(x)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Backbone
+# Full model
 # ─────────────────────────────────────────────────────────────────────────────
 
-class ArkSwinTransformer3D(swin.SwinTransformer):
+class ArkModel3D(nn.Module):
     """
-    Unified Swin backbone for 3D volumetric inputs.
+    3D encoder + projector + per-dataset classification heads.
 
-    Calling convention (matches original Ark+ trainer):
-        feat, logit = model(x, head_n)
-        feat → projected embedding  (B, proj_dim)   for consistency loss
-        logit→ classification head  (B, n_classes)  for task loss
+    Calling convention (matches trainer_3d.py):
+        proj_feat, logit = model(x, head_n)
     """
 
-    def __init__(self,
-                 num_classes_list: list,
-                 projector_features: int = None,
-                 **swin_kwargs):
-        super().__init__(**swin_kwargs)
+    def __init__(self, num_classes_list: list, enc_dim: int = 256,
+                 projector_features: int = None):
+        super().__init__()
 
-        enc_dim  = self.num_features      # e.g. 768 for swin_tiny (96 × 2³)
-        proj_dim = projector_features or enc_dim
+        self.encoder   = Encoder3D(enc_dim=enc_dim)
+        proj_dim       = projector_features or enc_dim
+        self.projector = ArkProjector(enc_dim, enc_dim * 2, proj_dim)
 
-        self.projector  = ArkProjector(enc_dim, enc_dim * 2, proj_dim)
         self.omni_heads = nn.ModuleList([
             nn.Linear(enc_dim, nc) for nc in num_classes_list
         ])
+        for h in self.omni_heads:
+            nn.init.normal_(h.weight, std=0.01)
+            nn.init.constant_(h.bias, 0.0)
 
         self._enc_dim  = enc_dim
         self._proj_dim = proj_dim
 
-        # Re-init classification heads (small std for stable early training)
-        for head in self.omni_heads:
-            nn.init.normal_(head.weight, std=0.01)
-            nn.init.constant_(head.bias, 0.0)
-
-    # ── internal helpers ──────────────────────────────────────────────────────
-
-    @staticmethod
-    def _pool(x: torch.Tensor) -> torch.Tensor:
-        """
-        Collapse timm SwinTransformer output to (B, F).
-        Handles all timm versions:
-          (B, F)       — already pooled (timm ≥ 0.9 with global_pool='avg')
-          (B, S, C)    — sequence  → mean over S
-          (B, H, W, C) — spatial   → mean over H,W
-        """
-        if x.dim() == 2:
-            return x
-        if x.dim() == 3:
-            return x.mean(dim=1)
-        if x.dim() == 4:
-            return x.mean(dim=[1, 2])
-        raise ValueError(f"Unexpected feature shape from Swin: {x.shape}")
-
-    @staticmethod
-    def _to3ch(x: torch.Tensor) -> torch.Tensor:
-        """Replicate single-channel input to 3 channels for patch embedding."""
-        if x.shape[1] == 1:
-            return x.repeat(1, 3, 1, 1)
-        if x.shape[1] == 2:
-            return torch.cat([x, x[:, :1]], dim=1)
-        return x   # already 3-channel
-
-    def _encode(self, x: torch.Tensor) -> torch.Tensor:
-        """
-        Extract (B, enc_dim) feature vector from a 3D volume.
-        x : (B, 1, D, H, W)
-        """
-        B, C, D, H, W = x.shape
-        # Fold depth into batch
-        x = rearrange(x, 'b c d h w -> (b d) c h w')   # (B*D, 1, H, W)
-        x = self._to3ch(x)                               # (B*D, 3, H, W)
-        feats = self._pool(super().forward_features(x))  # (B*D, enc_dim)
-        # Average over depth slices → single feature per volume
-        feats = feats.view(B, D, -1).mean(dim=1)         # (B, enc_dim)
-        return feats
-
-    # ── public API ────────────────────────────────────────────────────────────
-
-    def forward(self,
-                x: torch.Tensor,
-                head_n: int = None):
-        """
-        Returns (proj_feat, logit) when head_n is given.
-        proj_feat : (B, proj_dim)    — fed to consistency MSE loss
-        logit     : (B, n_classes_i) — fed to task loss
-        """
-        enc  = self._encode(x)                    # (B, enc_dim)
-        proj = self.projector(enc)                 # (B, proj_dim)
-
+    def forward(self, x: torch.Tensor, head_n: int = None):
+        enc  = self.encoder(x)
+        proj = self.projector(enc)
         if head_n is not None:
             return proj, self.omni_heads[head_n](enc)
-
-        # Return all heads (not used during training)
         return [h(enc) for h in self.omni_heads]
 
     def generate_embeddings(self, x: torch.Tensor) -> torch.Tensor:
-        """Return projected embeddings for downstream linear probing."""
-        return self.projector(self._encode(x))
+        return self.projector(self.encoder(x))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Model factory
+# Factory
 # ─────────────────────────────────────────────────────────────────────────────
 
-def build_model_3d(args, num_classes_list: list) -> ArkSwinTransformer3D:
+def build_model_3d(args, num_classes_list: list) -> ArkModel3D:
     """
     Build student or teacher model.
-
-    args.model_name    : 'swin_tiny' | 'swin_small' | 'swin_base' | 'swin_large'
-    args.crop_size     : image resolution (default 28 for MedMNIST 3D)
-    num_classes_list   : [n_cls_dataset_0, n_cls_dataset_1, ...]
-                         binary → 1,  multi-class N-way → N
+    args.model_name is ignored — always uses 3D ResNet encoder.
+    enc_dim=256 gives ~4M params, fast on RTX 4060.
     """
-    name     = args.model_name
-    img_size = getattr(args, 'crop_size', 28)
-    pf       = getattr(args, 'projector_features', None)
-
-    # patch_size=2 keeps 14×14 tokens at 28px; switch to 4 for larger inputs
-    patch = 2 if img_size <= 64 else 4
-
-    swin_kwargs = dict(
-        img_size   = img_size,
-        patch_size = patch,
-        window_size= 7,
-        num_classes= 0,          # disable timm's own head
-    )
-
-    if name == 'swin_tiny':
-        model = ArkSwinTransformer3D(
-            num_classes_list, pf,
-            embed_dim=96, depths=(2, 2, 6, 2), num_heads=(3, 6, 12, 24),
-            **swin_kwargs)
-    elif name == 'swin_small':
-        model = ArkSwinTransformer3D(
-            num_classes_list, pf,
-            embed_dim=96, depths=(2, 2, 18, 2), num_heads=(3, 6, 12, 24),
-            **swin_kwargs)
-    elif name == 'swin_base':
-        model = ArkSwinTransformer3D(
-            num_classes_list, pf,
-            embed_dim=128, depths=(2, 2, 18, 2), num_heads=(4, 8, 16, 32),
-            **swin_kwargs)
-    elif name == 'swin_large':
-        model = ArkSwinTransformer3D(
-            num_classes_list, pf,
-            embed_dim=192, depths=(2, 2, 18, 2), num_heads=(6, 12, 24, 48),
-            **swin_kwargs)
-    else:
-        raise ValueError(
-            f"Unknown model '{name}'. "
-            "Choose: swin_tiny | swin_small | swin_base | swin_large"
-        )
-
-    # Optional pretrained weights
-    pw = getattr(args, 'pretrained_weights', None)
-    if pw:
-        sd = (load_state_dict_from_url(pw, map_location='cpu')
-              if pw.startswith('https') else load_state_dict(pw))
-        for key in ('state_dict', 'model'):
-            if key in sd:
-                sd = sd[key]
-                break
-        # Drop keys that are always re-initialised
-        for k in [k for k in sd if 'attn_mask' in k or 'omni_heads' in k]:
-            del sd[k]
-        msg = model.load_state_dict(sd, strict=False)
-        print(f"[build_model_3d] Loaded pretrained weights: {msg}")
+    pf  = getattr(args, 'projector_features', None)
+    model = ArkModel3D(num_classes_list, enc_dim=256, projector_features=pf)
 
     n_params = sum(p.numel() for p in model.parameters()) / 1e6
-    print(f"[build_model_3d] {name}  |  enc_dim={model._enc_dim}  "
-          f"|  params={n_params:.1f}M  |  heads={num_classes_list}")
+    print(f"[build_model_3d] 3D-ResNet  |  enc_dim=256  |  "
+          f"params={n_params:.1f}M  |  heads={num_classes_list}")
     return model
 
 

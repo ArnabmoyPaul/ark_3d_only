@@ -157,9 +157,9 @@ def aug_student(vol: np.ndarray) -> torch.Tensor:
     vol : float32 numpy (D, H, W) in [0, 1]
     Returns torch float32 (1, D, H, W) normalised to [-1, 1]
 
-    Applies Models Genesis transforms + standard geometric augmentation.
-    Each transform is independent with p=0.5.
-    Outer-cutout and inner-cutout are mutually exclusive (pick one max).
+    Reduced intensity vs original — with only 16 batches/epoch,
+    overly aggressive corruption prevents stable representation learning.
+    Models Genesis transforms kept but at lower probability.
     """
     # ── Geometric ─────────────────────────────────────────────────────────
     for ax in range(3):
@@ -170,30 +170,29 @@ def aug_student(vol: np.ndarray) -> torch.Tensor:
         k   = random.randint(1, 3)
         vol = np.rot90(vol, k=k, axes=(1, 2)).copy()
 
-    # ── Models Genesis Transform 1: Non-linear intensity ──────────────────
-    if random.random() < 0.5:
+    # ── Models Genesis Transform 1: Non-linear intensity (p=0.3) ──────────
+    if random.random() < 0.3:
         vol = _bezier_nonlinear(vol)
 
-    # ── Models Genesis Transform 2: Local pixel shuffling ─────────────────
-    if random.random() < 0.5:
-        vol = _local_pixel_shuffling(vol, n_windows=300)
-
-    # ── Models Genesis Transforms 3 & 4: Cutout (mutually exclusive) ──────
-    cutout_choice = random.random()
-    if cutout_choice < 0.25:          # p=0.25 → inner-cutout
-        vol = _inner_cutout(vol)
-    elif cutout_choice < 0.50:        # p=0.25 → outer-cutout
-        vol = _outer_cutout(vol)
-    # else: p=0.50 → no cutout
-
-    # ── Gaussian noise ────────────────────────────────────────────────────
+    # ── Models Genesis Transform 2: Local pixel shuffling (p=0.3) ─────────
     if random.random() < 0.3:
-        noise = np.random.normal(0, 0.015, vol.shape).astype(np.float32)
+        vol = _local_pixel_shuffling(vol, n_windows=150)
+
+    # ── Models Genesis Transforms 3 & 4: Cutout (p=0.2 each) ─────────────
+    cutout_choice = random.random()
+    if cutout_choice < 0.15:
+        vol = _inner_cutout(vol)
+    elif cutout_choice < 0.30:
+        vol = _outer_cutout(vol)
+
+    # ── Gaussian noise (p=0.2) ────────────────────────────────────────────
+    if random.random() < 0.2:
+        noise = np.random.normal(0, 0.01, vol.shape).astype(np.float32)
         vol   = np.clip(vol + noise, 0.0, 1.0)
 
     # ── Normalise to [-1, 1] ──────────────────────────────────────────────
     vol = (vol.astype(np.float32) - 0.5) / 0.5
-    return torch.tensor(vol[np.newaxis], dtype=torch.float32)   # (1,D,H,W)
+    return torch.tensor(vol[np.newaxis], dtype=torch.float32)
 
 
 def aug_teacher(vol: np.ndarray) -> torch.Tensor:
